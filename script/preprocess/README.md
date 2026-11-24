@@ -70,4 +70,4 @@ normality_all <- normality(experiment,
 
 ## 模擬データと実行例
 
-[test_data/README.md](../../test_data/README.md)の計画別CSVと、[examples/analysis_examples.R](../../examples/analysis_examples.R)を参照してください。
+[test_data/README.md](../../test_data/README.md)に計画別CSVと列の説明があります。このページの前処理例と、[検定の実行例](../test/README.md#6-実行例再読み込み保存結果)を組み合わせて利用できます。

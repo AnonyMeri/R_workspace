@@ -71,8 +71,6 @@ sem_result <- relate(data, analysis = "sem", sem_model = '
 - Rosseel, Y. (2012). *lavaan: An R Package for Structural Equation Modeling.* Journal of Statistical Software, 48(2), 1–36. [DOI: 10.18637/jss.v048.i02](https://doi.org/10.18637/jss.v048.i02)。SEMに使用する実装の論文。
 - [lavaan公式チュートリアル](https://lavaan.ugent.be/tutorial/index.html)、[推定・欠測・標準誤差](https://lavaan.ugent.be/tutorial/est.html)、[カテゴリ変数](https://lavaan.ugent.be/tutorial/cat.html)：推定法とデータ型の対応。本スクリプトが公開する選択肢は上記に限定します。
 
-## 模擬データと互換修正
+## 模擬データ
 
-[test_data/relation.csv](../../test_data/relation.csv)と[examples/relation_examples.R](../../examples/relation_examples.R)を用意しています。前者は人工的に生成した300行のデータです。
-
-`r_sem.R`は`do.call("sem", arguments, envir = asNamespace("lavaan"))`で推定関数を呼び出します。lavaan 0.6-14で呼び出し名の検査が原因となるエラーを避けるための互換修正で、推定引数・モデルの指定は変えていません。一式の動作確認記録は[tests/README.md](../../tests/README.md)を参照してください。
+[test_data/relation.csv](../../test_data/relation.csv)は300行の模擬データです。このページの回帰・相関・SEMのコード例で使用します。列の意味は[test_data/README.md](../../test_data/README.md)を参照してください。

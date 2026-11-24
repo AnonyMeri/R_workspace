@@ -57,10 +57,10 @@ source("script/load_script.R", encoding = "UTF-8")       # 読み込み・再読
 |---|---|---|
 | 前処理、記述統計、Shapiro–Wilk、t検定、一般ランクの全体検定、基本回帰、相関 | R標準の`stats`・`utils`等 | 追加導入不要 |
 | Anderson–Darling・Lilliefors | `nortest` | 追加の正規性検定を選ぶ場合 |
-| ANOVA・ANCOVA | `afex`、`emmeans` | 球面性関連には依存先の`car`も使用 |
+| ANOVA・ANCOVA | `afex`、`emmeans`、`car` | 球面性関連にも`car`を使用 |
 | ART・ART-C | `ARTool`、`emmeans`、`car` | `car`は被験者内の球面性評価で使用 |
 | 置換ANOVA・ANCOVA | `permuco` | 下位検定は実装していない |
-| Dunn、Games–Howell | `PMCMRplus` | 一般ランク・Welchの3群以上の下位検定 |
+| Dunn、Games–Howellの下位検定 | `PMCMRplus` | 一般ランク・Welchの3群以上の下位検定 |
 | Brunner–Munzel | `lawstat` | t近似 |
 | ATS＋MCTP | `rankFD` | 全体検定と多重比較 |
 | Quadeの順位ANCOVA | `npANCOVA` | 対応なし1要因 |
@@ -76,42 +76,13 @@ install.packages(c("afex", "emmeans", "car")) # ANOVA・ANCOVAの例
 
 ## 実行例と動作確認
 
-[検定の実行例](../examples/analysis_examples.R)、[回帰・相関・SEMの実行例](../examples/relation_examples.R)を用意しています。動作確認の方法・結果・制約は[tests/README.md](../tests/README.md)にまとめています。
+- [前処理・正規性検定](preprocess/README.md)：混合計画の列指定と独立した正規性検定。
+- [検定の実行例](test/README.md#6-実行例再読み込み保存結果)：分析方法、下位検定の計算・表示範囲、結果の参照と保存。
+- [回帰・相関・SEM](relation/README.md)：同梱CSVを使ったコード例。
+- [模擬データ一覧](../test_data/README.md)：計画、行数、列の意味。
 
-## 確認環境のパッケージ版
+現在のリポジトリには、独立した`examples/`・`tests/`、模擬データの生成スクリプト、自動テスト一式は含まれていません。READMEの例はリポジトリのルートを作業ディレクトリとして実行します。
 
-以下は動作確認に使用した版の記録です。最低バージョンや固定を要求する設定ではありません。
+## 収録ファイルの配置
 
-R version 4.2.2 Patched (2022-11-10 r83330)
-
-- afex: 1.2.1
-- emmeans: 1.8.4.1
-- car: 3.1.1
-- ARTool: 0.11.2
-- permuco: 1.1.3
-- PMCMRplus: 1.9.12
-- lawstat: 3.6
-- rankFD: 0.1.1
-- npANCOVA: 0.2.0
-- lavaan: 0.6.14
-
-## 収録元と互換修正
-
-共有ファイルの最新版を2026-11-24時点で組み合わせた構成です。デスクトップの現物は直接参照していません。
-
-| 収録元の名前 | バージョン |
-|---|---|
-| `preprocess_helper(2).R` | 2 |
-| `relation_helper.R` | 11 |
-| `r_correlation.R` | 初版 |
-| `r_regression.R` | 2 |
-| `load_script(1).R` | 2 |
-| `p_prepare.R` | 1 |
-| `p_describe.R` | 初版 |
-| `p_normality.R` | 2 |
-| `r_sem.R` | 初版 |
-| `test_script.zip` | 4 |
-
-サーバー上の名前に付いた連番を除き、配置時のファイル名はhelperが参照する名前に統一しています。loaderはファイル一覧のコメントを更新しました。SEMは`lavaan::sem()`が呼び出し名を検査する版でも動作するよう、`do.call()`を名前指定に変更しました。それ以外の処理内容は収録元を維持しています（末尾の空白のみ整理）。
-
-回帰・SEMを別途変更している場合は、デスクトップの最新版と収録ファイルを照合してから取り込んでください。
+読み込み時は、現在のファイル構成表にある名前と配置を使用します。フォルダごとにhelperと子スクリプトを揃え、再読み込みには`load_script.R`を使ってください。

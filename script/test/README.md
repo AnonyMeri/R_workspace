@@ -6,7 +6,7 @@
 
 この文書は、同梱の `test_helper.R` と10本の `t_*.R` の実装を対象とします。利用者の入口は `analyze()` です。各 `t_*.R` は計算を担当し、方法の選択、球面性補正の適用、多重比較補正、表示、結果の取りまとめはhelperが担当します。各計算法が持つ固有の補正は、そのパッケージに委譲します。
 
-この文書は`script/test/`の分析方法と共通処理を説明します。[全体説明](../../README.md)、[実行例](../../examples/analysis_examples.R)、[模擬データ](../../test_data/README.md)も参照してください。
+この文書は`script/test/`の分析方法と共通処理を説明します。[全体説明](../../README.md)、[実行例](#6-実行例再読み込み保存結果)、[模擬データ](../../test_data/README.md)も参照してください。
 
 ファイル別の担当と必須ライブラリは[script/README.md](../README.md)にまとめています。
 
@@ -22,7 +22,7 @@
 
 実行可能な方法をチェックボタンで複数選択できます。共変量の分析は、下段で「実行しない／ANCOVA／置換ANCOVA／順位ANCOVA」を縦1列に並べた単一選択です。共変量なしの方法とは併用できますが、共変量を扱う3方法同士の同時指定は、引数からでも停止します。
 
-「主効果に基づく単純比較の追加」は「表示設定」に移しました。この項目は表示だけでなく、計算する下位検定も増やす設定です。今回、基本設定に下位検定の実行可否と計算範囲を、表示設定に下位検定の表示範囲を追加しました。
+「主効果に基づく単純比較の追加」は「表示設定」にあります。この項目は表示だけでなく、計算する下位検定も増やす設定です。基本設定で下位検定の実行可否と計算範囲を、表示設定で下位検定の表示範囲を指定します。
 
 ### 実装済みの分析
 
@@ -94,7 +94,7 @@ permuco/置換ANCOVAの置換pにはGG/HFを重ねません。t・Welch・一般
 
 ART専用だった `sphericity` は既定を `NULL` とし、通常は使用しません。引数で明示した場合のみ、ARTについて `correction` より優先します。GUIでは旧値を共通欄の初期値に移し、隠れたART専用指定を残しません。
 
-2026-11-23版で、当初の「ANOVAのauto＝常にGG」「ARTは既定none」から共通のMauchly判定へ変更しました。今回の2026-11-24版では、棄却時にGGを固定適用していた処理を、GGのεによるGG/HF選択へ変更しています。従来の補正方針を明示する例は次のとおりです。
+ANOVAにGG、ARTに未補正を明示する例は次のとおりです。
 
 ```r
 result <- analyze(experiment, method = c("anova", "art"),
@@ -195,7 +195,7 @@ ANOVA/ANCOVA・Welch・tの推定差は元尺度です。ART-Cの推定差は整
 | 項目 | 現在の扱い |
 |---|---|
 | 同じID×条件に複数行 | 通常ANOVA/ANCOVAはafexが集約。一般ランク・t/Welch・Brunner–Munzel/ATS・Quadeは参加者×水準で平均集約 |
-| ART/permucoの重複行 | 今回からhelperで停止。反復行を独立観測として渡すことを防ぎ、前処理で集約を求める |
+| ART/permucoの重複行 | helperで停止。反復行を独立観測として渡すことを防ぎ、前処理で集約を求める |
 | 通常ANOVA/ANCOVAの欠損 | DVごとに必要列の欠損を処理し、被験者内計画は完全な参加者を使用 |
 | 一般ランク・t/Welch等の欠損 | 方法ごとに欠損を除外。対応ありは全水準の揃ったIDを全体・下位検定で使用 |
 | ARTの欠損 | ARToolのエラーとして停止する場合がある。前処理で整える |
@@ -216,11 +216,17 @@ ANOVA/ANCOVA・Welch・tの推定差は元尺度です。ART-Cの推定差は整
 ## 6. 実行例・再読み込み・保存結果
 
 ```r
-# 既存の一括loaderを再読み込みする場合
+# 一括loaderで読み込み・再読み込み
 source("script/load_script.R", encoding = "UTF-8")
 
 # test部分だけ再読み込みする場合（helperと子スクリプトは同じフォルダ）
 source("script/test/test_helper.R", encoding = "UTF-8")
+
+# 対応なし1要因の模擬データからexperimentを作成
+# このデータは下記の順位ANCOVA・一般ランクにも使用可能
+data <- read.csv("test_data/between_3.csv")
+experiment <- preprocess(data, id = "ID", iv = "group", dv = "score",
+  covariate = "covariate", select = "arguments", show = FALSE)
 
 # 方法を省略するとGUI
 result <- analyze(experiment)
@@ -247,7 +253,8 @@ result <- analyze(experiment, method = "art", followup_scope = "all", display_sc
 
 # 全体検定だけ行う
 result <- analyze(experiment, method = "anova", posthoc = FALSE)
-saveRDS(result, "analysis_result.rds")
+dir.create("results", showWarnings = FALSE)
+saveRDS(result, "results/analysis_result.rds")
 ```
 
 パッケージが不足している場合は、該当方法の実行時に停止し、インストール方法を示します。例：`install.packages("permuco")`。GUIにはtcltkを利用できるデスクトップR/RStudioが必要です。
@@ -334,7 +341,7 @@ DVごとに、該当する段階だけを表示します。球面性→診断／
 ### Brunner–Munzel
 
 7. Brunner, E., & Munzel, U. (2000). *The Nonparametric Behrens–Fisher Problem: Asymptotic Theory and a Small-Sample Approximation.* Biometrical Journal, 42(1), 17–25. [原著DOI](https://doi.org/10.1002/%28SICI%291521-4036%28200001%2942%3A1%3C17%3A%3AAID-BIMJ17%3E3.0.CO%3B2-U)。異なる分布・分散を許した2群の相対効果検定とt近似の根拠です。
-8. Neubert, K., & Brunner, E. (2007). *A studentized permutation test for the non-parametric Behrens–Fisher problem.* Computational Statistics & Data Analysis, 51(10), 5192–5204. [DOI: 10.1016/j.csda.2006.05.024](https://doi.org/10.1016/j.csda.2006.05.024)。studentized置換版の関連原著で、lawstatの参考文献にも挙げられています。**今回の実装は置換版ではなく、lawstatによるt近似です。**
+8. Neubert, K., & Brunner, E. (2007). *A studentized permutation test for the non-parametric Behrens–Fisher problem.* Computational Statistics & Data Analysis, 51(10), 5192–5204. [DOI: 10.1016/j.csda.2006.05.024](https://doi.org/10.1016/j.csda.2006.05.024)。studentized置換版の関連原著で、lawstatの参考文献にも挙げられています。**この実装は置換版ではなく、lawstatによるt近似です。**
 
 [lawstat公式リファレンス](https://search.r-project.org/CRAN/refmans/lawstat/html/brunner.munzel.test.html)を使用します。小標本や分散推定不能の状況で、近似を無条件に信頼したり、自動で別の検定に切り替えたりする実装ではありません。
 
@@ -344,7 +351,7 @@ DVごとに、該当する段階だけを表示します。球面性→診断／
 10. Konietschke, F., Hothorn, L. A., & Brunner, E. (2012). *Rank-based multiple test procedures and simultaneous confidence intervals.* Electronic Journal of Statistics, 6, 738–759. [DOI: 10.1214/12-EJS691](https://doi.org/10.1214/12-EJS691)。順位に基づく多重検定と同時信頼区間の根拠です。
 11. Konietschke, F., Pauly, M., Bathke, A. C., Friedrich, S., & Brunner, E. (2023). *rankFD: An R Software Package for Nonparametric Analysis of General Factorial Designs.* The R Journal. [DOI: 10.32614/RJ-2023-029](https://doi.org/10.32614/RJ-2023-029)、[原文PDF](https://journal.r-project.org/articles/RJ-2023-029/RJ-2023-029.pdf)。ATSとMCTPを提供する公式実装と使用例です。
 
-実装設定は `effect = "unweighted"`、`hypothesis = "H0p"`、ATSのF近似、全ペアのMCTPで `sci.method = "fisher"` です。rankFD自体は一般の要因計画を扱えますが、今回の入口は対応なし1要因・3群以上に限定します。MCTPの多変量tの数値計算に乱数が関係するため、再現時は `seed` を指定してください。「すべてのデータにATS＋MCTPを使うことを著者らが一律に推奨した」という意味ではなく、理論と公式実装に沿った構成です。
+実装設定は `effect = "unweighted"`、`hypothesis = "H0p"`、ATSのF近似、全ペアのMCTPで `sci.method = "fisher"` です。rankFD自体は一般の要因計画を扱えますが、このスクリプトの入口は対応なし1要因・3群以上に限定します。MCTPの多変量tの数値計算に乱数が関係するため、再現時は `seed` を指定してください。「すべてのデータにATS＋MCTPを使うことを著者らが一律に推奨した」という意味ではなく、理論と公式実装に沿った構成です。
 
 ### Quadeの順位ANCOVA
 
@@ -359,21 +366,8 @@ DVごとに、該当する段階だけを表示します。球面性→診断／
 
 多重比較は[R公式p.adjust](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/p.adjust.html)、CIとp値の調整の違いは[emmeans公式summary.emmGrid](https://search.r-project.org/CRAN/refmans/emmeans/html/summary.emmGrid.html)を参照してください。基本手法の実装はR公式の `t.test`、`oneway.test`、`wilcox.test`、`kruskal.test`、`friedman.test` とafexの仕様に従います。
 
-## 8. 今回の再確認・変更・検証
+## 8. 検証状況と制約
 
-添付ZIPから継続している11本を基準に、次を確認・変更しました。
+現在のリポジトリには自動テスト一式は含まれていません。
 
-下位検定の制御には `posthoc`、`followup_scope`、`display_scope` を使用します。今回、有意傾向の上限と下位検定の計算基準を `trend_alpha` に統一し、独立した入力欄を削除しました。旧 `followup_alpha` は同値の互換引数です。GUIの有効・無効の連動、下位検定をオフにした場合の計算省略、表示フィルタと保存データの分離を確認しました。球面性の設定欄は前回版ですでに共通化済みで、今回も1欄を維持しています。
-
-- 指定されたGUIの3行配置（t・ANOVA／Welch・ART・permuco／ランク・Brunner–Munzel・ATS＋MCTP）へ変更。共変量は縦1列、単純比較の追加は表示設定へ移動。球面性は共通の1欄を維持。
-- 球面性の `auto` は、効果ごとのMauchly判定とGGのεによるGG/HF選択。判定・選択規則・使用εを表示と結果に保存。今回、ANOVA/ANCOVA/ARTの分散分析見出しに実際の適用方式を明示し、効果別の補正列と照合。
-- ART-Cの補正後CIが失われる問題を修正し、emmeans系CIの水準を `1 - alpha` に統一。
-- 共通補正の対応表を1か所に集約し、GUIと引数指定の選択肢・検証を統一。一般ランクでも、検定不能なペアを総比較数に含めるように明示。指定した方式と実際のp値／CIの補正を区別して表示・保存。固有補正は二重補正しない。多重比較の補正法の自動選択は追加しない。下位検定の実行可否と計算・表示範囲は今回追加。
-- ART/permucoで同じID×条件の重複観測が独立観測扱いになるのを防ぐ入力チェックを追加。
-- 対応なしpermucoの表で分母自由度を補い、残差行は表示時に省略。
-- 共通の数値設定を検証し、`p_digits = 0` による不適切なp値表示を防止。
-- 数値の要因水準に付くemmeansの接頭辞を照合し、同じ比較の方法別重複行を整理。1要因ART診断の空データ表示も修正。
-
-欠損処理の方法間差と、ANOVA/ART-Cの多重比較familyの違いは上記のとおり残っています。`normality()` の推奨ルールや、検定方法の自動切替は今回の変更対象ではありません。
-
-R 4.2.2で、計算・表示各3範囲、下位検定のオン／オフ、有意傾向と計算基準の共用・旧引数の互換性、表示条件を変えた場合の保存比較の一致、εの`.75`境界とGG/HFの分岐、公開する補正法と公式計算との数値照合、読み込み・対応なし／反復測定／混合・共変量モデル・GUIの実操作・既存loaderとの統合・結果のRDS保存を確認しています。主な検証パッケージはARTool 0.11.2、permuco 1.1.3、PMCMRplus 1.9.12、rankFD 0.1.1、lawstat 3.6、npANCOVA 0.2.0です。これは実装の動作検証であり、独自のART拡張を含む全条件の検定サイズ・検出力をシミュレーションで検証したという意味ではありません。
+下位検定の計算・表示範囲、補正、欠損処理は上記の実装仕様です。方法間で欠損処理や多重比較familyが異なる点、ARTへのGG/HF適用と被験者内ART-Cの再推定に独自処理を含む点に留意してください。独自拡張を含む全条件での検定サイズ・検出力を検証したという意味ではありません。
