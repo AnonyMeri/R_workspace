@@ -1,0 +1,20 @@
+# 実験データ：script/と同じ階層のCSVだけを除外する。
+/*.[cC][sS][vV]
+
+# Rの作業状態・IDE設定
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# ローカル環境・生成結果
+.Renviron
+.env
+.env.*
+.Rlibrary/
+renv/library/
+renv/staging/
+results/
+*.Rcheck/
+.DS_Store
+Thumbs.db
