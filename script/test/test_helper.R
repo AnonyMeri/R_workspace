@@ -1240,13 +1240,34 @@ evalq({
     invisible(NULL)
   }
 
-  validate_observation_units <- function(experiment, methods) {
-    if (!any(methods %in% c("art", "permuco", "permuco_ancova"))) return(invisible(NULL))
-    if (!is.data.frame(experiment$data) || !length(experiment$id) || !length(experiment$iv)) return(invisible(NULL))
-    columns <- c(experiment$id, experiment$iv)
-    if (all(columns %in% names(experiment$data)) && anyDuplicated(experiment$data[columns]))
-      stop("ART・permucoに同じID×条件の複数行は渡せません。前処理で集約方針を決め、参加者×条件を1行にしてください。", call. = FALSE)
-    invisible(NULL)
+  aggregate_observation_units <- function(experiment, method) {
+    dat <- experiment$data
+    keys <- c(experiment$id, experiment$iv)
+    if (!is.data.frame(dat) || !all(keys %in% names(dat)) || !anyDuplicated(dat[keys]))
+      return(list(experiment = experiment, info = NULL))
+    if (anyNA(dat[keys])) stop("ID・要因列に欠損があります。", call. = FALSE)
+    for (name in experiment$between) {
+      changed <- vapply(split(dat[[name]], dat[[experiment$id]], drop = TRUE),
+        function(x) length(unique(x)) != 1L, logical(1))
+      if (any(changed)) stop("被験者間要因がID内で変化しています: ", name, call. = FALSE)
+    }
+    target <- experiment$dv
+    if (length(target) != 1L || !is.numeric(dat[[target]]) || any(!is.finite(dat[[target]])))
+      stop("セル内反復の集約には欠損・無限値のない数値の従属変数が必要です。", call. = FALSE)
+    if (method == "permuco_ancova") for (name in experiment$covariate) {
+      if (anyNA(dat[[name]]) || any(vapply(split(dat[[name]], dat[[experiment$id]], drop = TRUE),
+          function(x) length(unique(x)) != 1L, logical(1))))
+        stop("共変量は欠損のない参加者内で一定の値が必要です: ", name, call. = FALSE)
+    }
+    group_codes <- lapply(dat[keys], function(x) as.integer(factor(x)))
+    groups <- split(seq_len(nrow(dat)), interaction(group_codes, drop = TRUE, lex.order = TRUE))
+    counts <- lengths(groups)
+    result <- dat[vapply(groups, `[`, integer(1), 1L), , drop = FALSE]
+    result[[target]] <- vapply(groups, function(i) mean(dat[[target]][i]), numeric(1))
+    rownames(result) <- NULL
+    experiment$data <- result
+    list(experiment = experiment, info = list(aggregation = "mean", n_observations = nrow(dat),
+      n_participant_cells = nrow(result), repetitions_min = min(counts), repetitions_max = max(counts)))
   }
 
   expand_methods <- function(method) {
@@ -1641,7 +1662,6 @@ analyze <- function(
   adjust <- .test_private_environment$normalize_adjustment(adjust)
   if (isTRUE(posthoc)) .test_private_environment$validate_adjustment(methods, adjust)
   .test_private_environment$validate_common_settings(alpha, followup_alpha, digits, p_digits, correction, sphericity)
-  .test_private_environment$validate_observation_units(experiment, methods)
   checked_adjust <- if (isTRUE(posthoc)) adjust else "bonferroni"
   if ("rank" %in% methods) .test_private_environment$validate_rank_settings(experiment, checked_adjust)
   for (selected in intersect(methods, c("brunner_munzel", "ats"))) {
@@ -1663,8 +1683,11 @@ analyze <- function(
   }
   .test_private_environment$validate_scope_settings(alpha, trend_alpha, followup_alpha, posthoc, followup_scope, display_scope)
   engine_followup_alpha <- trend_alpha
-  prepare_current <- function(raw, method) .test_private_environment$prepare_result(raw, method,
-    alpha, trend_alpha, simple_effects, sphericity, adjust, correction, posthoc, followup_scope, display_scope)
+  prepare_current <- function(raw, method) {
+    result <- .test_private_environment$prepare_result(raw, method,
+      alpha, trend_alpha, simple_effects, sphericity, adjust, correction, posthoc, followup_scope, display_scope)
+    result
+  }
   collected <- setNames(lapply(methods, function(x) list()), methods)
   rng_states <- list()
   warnings_by_method <- notices_by_method <- setNames(lapply(methods, function(x) character()), methods)
@@ -1672,6 +1695,12 @@ analyze <- function(
 
   # 同じメソッドの乱数列を従属変数間で引き継ぎ、明示seed時は呼出元の乱数状態を復元する。
   run_engine <- function(method, experiment) {
+    aggregation <- NULL
+    if (method %in% c("art", "permuco", "permuco_ancova")) {
+      prepared <- .test_private_environment$aggregate_observation_units(experiment, method)
+      experiment <- prepared$experiment
+      aggregation <- prepared$info
+    }
     analysis_arguments <- switch(
     method,
     anova = list(
@@ -1737,6 +1766,14 @@ analyze <- function(
       analysis_arguments$seed <- NULL
     }
     raw <- do.call(analysis_function, analysis_arguments)
+    if (!is.null(aggregation)) raw <- lapply(raw, function(result) {
+      result$cell_replication <- aggregation
+      result$messages <- unique(c(result$messages, sprintf(
+        "同一ID×条件の従属変数を平均しました（%d行→%dセル、セルあたり%d〜%d行）。",
+        aggregation$n_observations, aggregation$n_participant_cells,
+        aggregation$repetitions_min, aggregation$repetitions_max)))
+      result
+    })
     if (method %in% c("permuco", "permuco_ancova") && !is.null(seed)) {
       rng_states[[method]] <<- get(".Random.seed", envir = .GlobalEnv)
       raw <- lapply(raw, function(result) { result$seed <- seed; result })

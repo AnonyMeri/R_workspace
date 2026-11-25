@@ -245,12 +245,13 @@ t_art <- function(
     if (anyNA(id_index) || anyNA(condition_index)) {
       stop("IDまたは被験者内条件に欠損があります。", call. = FALSE)
     }
-    if (anyDuplicated(data.frame(id_index, condition_index))) {
-      stop("同一ID・被験者内条件に複数行あります。球面性推定の前に集約方針を指定してください。",
-           call. = FALSE)
-    }
-    if (nrow(dat) != length(ids) * nrow(idata)) {
+    cell_index <- id_index + (condition_index - 1L) * length(ids)
+    cell_counts <- matrix(tabulate(cell_index, nbins = length(ids) * nrow(idata)), nrow = length(ids))
+    if (any(cell_counts == 0L)) {
       stop("被験者内条件に欠測があります。完全な反復測定データが必要です。", call. = FALSE)
+    }
+    if (length(unique(as.integer(cell_counts))) != 1L) {
+      stop("球面性評価のセル内反復は、全参加者×条件で回数が等しい必要があります。", call. = FALSE)
     }
     first <- match(ids, as.character(dat[[id]]))
     subject_data <- dat[first, between, drop = FALSE]
@@ -262,7 +263,7 @@ t_art <- function(
     }
     rownames(subject_data) <- NULL
     list(ids = ids, id_index = id_index, condition_index = condition_index,
-         idata = idata, subject_data = subject_data)
+         idata = idata, subject_data = subject_data, cell_index = cell_index, cell_counts = cell_counts)
   }
 
   effect_epsilon <- function(model, effect, layout) {
@@ -277,7 +278,10 @@ t_art <- function(
       stop("効果に対応するART順位データを取得できません: ", effect, call. = FALSE)
     }
     responses <- matrix(NA_real_, nrow = length(layout$ids), ncol = nrow(layout$idata))
-    responses[cbind(layout$id_index, layout$condition_index)] <- ranks
+    # analyze()は同一ID×条件の元データを事前に平均してから渡す。
+    rank_sums <- rowsum(matrix(ranks, ncol = 1L), layout$cell_index, reorder = FALSE)
+    positions <- as.integer(rownames(rank_sums))
+    responses[positions] <- rank_sums[, 1L] / layout$cell_counts[positions]
     if (anyNA(responses)) stop("順位データの条件配置に欠損があります。", call. = FALSE)
     colnames(responses) <- paste0("cell", seq_len(ncol(responses)))
     # 数式内の応答行列を公開APIのlmへ渡す。betweenの完全要因配置で残差を求める。

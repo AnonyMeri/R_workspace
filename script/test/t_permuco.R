@@ -97,7 +97,7 @@ t_permuco <- function(
       stop("共変量が一定値です: ", name, call. = FALSE)
     }
   }
-  # 各条件が揃っていることを確認。セル内反復はパッケージへ渡す。
+  # 各条件が揃っていることを確認。analyze()はセル内反復を事前に平均する。
   if (length(within)) {
     cell <- interaction(data[within], drop = FALSE)
     counts <- table(data[[id]], cell)
