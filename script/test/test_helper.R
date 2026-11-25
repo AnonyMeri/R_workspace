@@ -1328,7 +1328,6 @@ evalq({
     validate_common_settings(settings$alpha, settings$followup_alpha, settings$digits, settings$p_digits,
       settings$correction, settings$sphericity)
     validate_scope_settings(settings$alpha, settings$trend_alpha, settings$followup_alpha, settings$posthoc, settings$followup_scope, settings$display_scope)
-    validate_observation_units(experiment, methods)
     checked_adjust <- if (settings$posthoc) settings$adjust else "bonferroni"
     if ("rank" %in% methods) validate_rank_settings(experiment, checked_adjust)
     for (method in intersect(methods, c("brunner_munzel", "ats"))) .t_relative_design(experiment, method)
