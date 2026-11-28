@@ -8,7 +8,7 @@ t_permuco <- function(
     digits = 3, p_digits = 3, np = 5000, seed = NULL,
     permutation_method = NULL, use_covariates = FALSE,
     covariate_interactions = TRUE,
-    .on_result = NULL
+    .on_result = NULL, .followup_seed = seed
 ) {
   if (!requireNamespace("permuco", quietly = TRUE)) {
     stop('permuco が必要です。install.packages("permuco") を実行してください。', call. = FALSE)
@@ -152,7 +152,7 @@ t_permuco <- function(
         engine <- NULL
         function(effects, forced, main_effects) {
           if (is.null(engine)) engine <<- .t_permuco_followups(followup_data,
-            followup_formula, id, iv, within, covariate, np, seed)
+            followup_formula, id, iv, within, covariate, np, .followup_seed)
           engine(effects, forced, main_effects)
         }
       }),

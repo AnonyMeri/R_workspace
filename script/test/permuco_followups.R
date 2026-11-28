@@ -3,8 +3,7 @@
 .t_permuco_followups <- function(data, formula, id, iv, within, covariate, np, seed) {
   if (!requireNamespace('emmeans', quietly = TRUE) || !requireNamespace('sandwich', quietly = TRUE))
     stop('置換下位検定にはemmeansとsandwichが必要です。', call. = FALSE)
-  fixed_formula <- stats::as.formula(paste(deparse(formula[[2]]), '~',
-    paste(deparse(formula[[3]], width.cutoff = 500), collapse = '')))
+  fixed_formula <- formula
   # Remove Error() through terms, without changing fixed-effect interactions.
   tt <- terms(formula, specials = 'Error')
   special <- attr(tt, 'specials')$Error
@@ -25,12 +24,18 @@
     if (min(eg$values) <= 1e-10) stop('参加者の影響が大きすぎてHC2を計算できません。', call.=FALSE)
     eg$vectors %*% ((1/sqrt(eg$values)) * t(eg$vectors))
   })
+  # This part of each participant's HC2 score does not depend on the contrast.
+  score_design <- lapply(seq_along(groups), function(k)
+    adjusters[[k]] %*% X[groups[[k]],,drop=FALSE] %*% A)
+  rm(adjusters)
   at <- if (length(covariate)) setNames(as.list(rep(0,length(covariate))),covariate) else NULL
   compute <- function(effects, forced, main_effects) {
-    had <- exists('.Random.seed', .GlobalEnv, inherits=FALSE)
-    if (had) old <- get('.Random.seed', .GlobalEnv)
-    on.exit(if(had) assign('.Random.seed',old,.GlobalEnv) else if(exists('.Random.seed',.GlobalEnv,inherits=FALSE)) rm('.Random.seed',envir=.GlobalEnv))
-    if (!is.null(seed)) set.seed(seed)
+    if (!is.null(seed)) {
+      had <- exists('.Random.seed', .GlobalEnv, inherits=FALSE)
+      if (had) old <- get('.Random.seed', .GlobalEnv)
+      on.exit(if(had) assign('.Random.seed',old,.GlobalEnv) else if(exists('.Random.seed',.GlobalEnv,inherits=FALSE)) rm('.Random.seed',envir=.GlobalEnv))
+      set.seed(seed)
+    }
     result <- list()
     for (effect in effects) {
       factors <- strsplit(gsub('`','',effect,fixed=TRUE),':',fixed=TRUE)[[1]]
@@ -52,7 +57,7 @@
           if (!is.finite(denom) || denom<=0) stop('推定不能な対比です。',call.=FALSE)
           b0 <- beta - as.vector(A%*%L)*sum(L*beta)/denom
           f0 <- as.vector(X%*%b0); residual <- y-f0
-          weights <- lapply(seq_along(groups),function(k) as.vector(adjusters[[k]] %*% X[groups[[k]],,drop=FALSE] %*% A %*% L))
+          weights <- lapply(score_design,function(z) as.vector(z %*% L))
           statistic <- function(Y) {
             b <- A %*% crossprod(X,Y); E <- Y-Q%*%crossprod(Q,Y)
             scores <- lapply(seq_along(groups),function(k) as.vector(crossprod(weights[[k]],E[groups[[k]],,drop=FALSE])))

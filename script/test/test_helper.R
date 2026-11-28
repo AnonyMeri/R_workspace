@@ -1769,6 +1769,7 @@ analyze <- function(
       if (is.null(rng_states[[method]])) set.seed(seed)
       else assign(".Random.seed", rng_states[[method]], envir = .GlobalEnv)
       analysis_arguments$seed <- NULL
+      analysis_arguments$.followup_seed <- seed
     }
     raw <- do.call(analysis_function, analysis_arguments)
     if (!is.null(aggregation)) raw <- lapply(raw, function(result) {

@@ -38,6 +38,7 @@ source("script/load_script.R", encoding = "UTF-8")       # 読み込み・再読
 | 同上 | `t_welch.R` | WelchとGames–Howell |
 | 同上 | `t_art.R` | ART・ART-C |
 | 同上 | `t_permuco.R` | 置換ANOVA・ANCOVA |
+| 同上 | `permuco_followups.R` | 置換ANOVA・ANCOVAの下位比較 |
 | 同上 | `t_rank.R` | 対応・水準数に応じた一般的な順位検定 |
 | 同上 | `t_brunner_munzel.R` | Brunner–Munzel、ATSと共用する入力検証 |
 | 同上 | `t_ats.R` | ATS・MCTP |
@@ -81,7 +82,7 @@ install.packages(c("afex", "emmeans", "car")) # ANOVA・ANCOVAの例
 - [回帰・相関・SEM](relation/README.md)：同梱CSVを使ったコード例。
 - [模擬データ一覧](../test_data/README.md)：計画、行数、列の意味。
 
-現在のリポジトリには、独立した`examples/`・`tests/`、模擬データの生成スクリプト、自動テスト一式は含まれていません。READMEの例はリポジトリのルートを作業ディレクトリとして実行します。
+READMEの例はリポジトリのルートを作業ディレクトリとして実行します。置換下位検定の確認方法は[検定の説明](test/README.md#8-検証状況と制約)にあります。
 
 ## 収録ファイルの配置
 

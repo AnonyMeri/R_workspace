@@ -15,9 +15,7 @@
 | `test_data/` | [模擬CSVの一覧、列の意味、使用例](test_data/README.md) |
 | `LICENSE` | [GNU General Public License v3.0の本文](LICENSE) |
 
-置換ANOVA・ANCOVAの下位検定は、推定周辺平均の比較に参加者単位HC2と置換を用います。実行条件と多重比較補正の範囲は[検定の説明](script/test/README.md)を参照してください。
-
-現在のリポジトリには`examples/`・`tests/`は含まれていません。実行例は各フォルダのREADMEに記載しています。`script/test/`は統計検定の実装を置くフォルダです。
+置換ANOVA・ANCOVAでは、全体検定に加えて水準間の比較を行えます。比較方法や実行条件は[検定の説明](script/test/README.md)をご覧ください。
 
 ## 始め方
 
@@ -42,15 +40,11 @@ result <- analyze(experiment, method = "t", select = "arguments", show = TRUE)
 
 GUIにはRの`tcltk`対応と画面環境が必要です。追加パッケージは分析方法ごとに異なります。[依存パッケージ一覧](script/README.md#必須ライブラリ)を参照してください。
 
-## 実験CSVと模擬データ
+## データと分析結果
 
-`script/`と同じ階層に置いたCSVは、拡張子の大文字小文字によらず`.gitignore`で除外します。`test_data/`の模擬CSVは登録対象です。Rの作業状態、環境変数ファイル、`results/`の保存結果も除外します。
+入力するCSVには、参加者ID、実験要因、測定値の列を用意します。共変量を使う場合は、その列も指定してください。列の例は[模擬データの説明](test_data/README.md)にあります。
 
-実験CSVを移動・削除する必要はありません。既に追跡されたCSVには`.gitignore`は効かないため、アップロード前に`git status --short`と`git ls-files`で対象を確認します。必要なら該当CSVを`git rm --cached -- ファイル名.csv`で追跡対象から外します。この操作はローカルファイルを削除しませんが、過去のコミットの内容を履歴から消すものでもありません。
-
-## 開発・確認状況
-
-作成中のスクリプト集です。実験計画や入力条件への対応範囲は各READMEを確認してください。確認内容と制約は[script/README.md](script/README.md#実行例と動作確認)にまとめています。別の環境で変更したスクリプトを取り込む際は、ファイルごとの差分を確認してください。
+分析結果は `saveRDS()` で保存できます。Gitを使う場合、ルートに置いたCSVや `results/` は新規の追跡対象から除外されます。すでに追跡済みのデータは自動では除外されないため、共有前に確認してください。
 
 ## ライセンス
 
