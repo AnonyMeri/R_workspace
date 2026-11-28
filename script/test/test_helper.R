@@ -58,6 +58,7 @@ if (is.null(.test_source_file)) {
     "t_anova.R",
     "t_ancova.R",
     "t_art.R",
+    "permuco_followups.R",
     "t_permuco.R",
     "t_rank.R",
     "t_brunner_munzel.R",
@@ -320,14 +321,14 @@ evalq({
   adjustment_policy <- function(methods) {
     p_adjust <- c("bonferroni", "holm", "hochberg", "hommel", "BH", "BY", "none")
     emmeans_adjust <- c("bonferroni", "holm", "sidak", "tukey", "hochberg", "hommel", "BH", "BY", "none")
-    configurable <- intersect(methods, c("anova", "ancova", "art", "rank", "rank_ancova"))
+    configurable <- intersect(methods, c("anova", "ancova", "art", "rank", "rank_ancova", "permuco", "permuco_ancova"))
     choices <- emmeans_adjust
-    if (any(configurable %in% c("rank", "rank_ancova"))) choices <- intersect(choices, p_adjust)
+    if (any(configurable %in% c("rank", "rank_ancova", "permuco", "permuco_ancova"))) choices <- intersect(choices, p_adjust)
     list(configurable = configurable, choices = choices,
       emmeans = intersect(methods, c("anova", "ancova", "art")),
-      p_adjust = intersect(methods, c("rank", "rank_ancova")),
+      p_adjust = intersect(methods, c("rank", "rank_ancova", "permuco", "permuco_ancova")),
       intrinsic = intersect(methods, c("welch", "ats")),
-      inactive = intersect(methods, c("t", "brunner_munzel", "permuco", "permuco_ancova")))
+      inactive = intersect(methods, c("t", "brunner_munzel")))
   }
 
   normalize_adjustment <- function(adjust) {
@@ -366,7 +367,7 @@ evalq({
       return(contrast)
     }
     original <- contrast$unadjusted
-    if (isTRUE(contrast$kind %in% c("rank", "rank_ancova"))) {
+    if (isTRUE(contrast$kind %in% c("rank", "rank_ancova", "permuco"))) {
       # 全ペアを1つのfamilyとし、抽出・表示より先に補正する。
       original$p.uncorrected <- original$p.value
       original$p.value <- stats::p.adjust(original$p.value, method = adjust, n = nrow(original))
@@ -467,7 +468,7 @@ evalq({
     result$requested_adjust <- adjust
     result$adjustment_engine <- if (!is.function(result$compute_followups)) "not_applied" else
       if (method %in% c("anova", "ancova", "art")) "emmeans" else
-      if (method %in% c("rank", "rank_ancova")) "p.adjust" else if (method %in% c("welch", "ats")) "intrinsic" else "not_applied"
+      if (method %in% c("rank", "rank_ancova", "permuco", "permuco_ancova")) "p.adjust" else if (method %in% c("welch", "ats")) "intrinsic" else "not_applied"
     result$adjust <- if (method == "ats") "MCTP (Fisher, Tukey)" else if (method == "welch" && result$n_levels > 2L)
       "Games–Howell" else if (method %in% c("brunner_munzel", "t", "welch") ||
         (method == "rank_ancova" && result$n_levels == 2L)) "none" else adjust
@@ -491,6 +492,11 @@ evalq({
     selection <- select_followups(table[eligible, , drop = FALSE], alpha, trend_alpha,
       simple_effects && !direct_method, posthoc, followup_scope)
     result$forced_simple_effects <- selection$forced
+    if (method %in% c('permuco','permuco_ancova')) {
+      selection$effects <- selection$effects[lengths(strsplit(selection$effects, ':', fixed=TRUE)) <= 2L]
+      if (posthoc) result$messages <- unique(c(result$messages,
+        '下位検定：参加者単位HC2の置換対比検定（独自拡張）。残差置換は近似的方法です。被験者内の符号反転には帰無下の対称性が必要です。信頼区間は算出しません。'))
+    }
     result$followup_main_effects <- selection$main
     result$follow_up_effects <- if (is.function(result$compute_followups)) selection$effects else character()
     result

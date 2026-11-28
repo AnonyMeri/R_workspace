@@ -122,6 +122,8 @@ t_permuco <- function(
   error <- if (length(within)) paste0(" + Error(", quote_name(id), " / (",
                    paste(quote_name(within), collapse = " * "), "))") else ""
   results <- list()
+  # Identical within-cell ordering is required for whole-subject residual permutations.
+  data <- data[do.call(order, data[c(id, within)]), , drop = FALSE]
   for (target in dv) {
     formula <- stats::as.formula(paste0(quote_name(target), " ~ ", fixed, error))
     model <- permuco::aovperm(formula, data = data, np = np,
@@ -144,6 +146,16 @@ t_permuco <- function(
       anova_type = "III", permutation_method = selected_method,
       np = model$np, requested_np = np, seed = seed, alpha = alpha, followup_alpha = followup_alpha,
       contrasts = list(), digits = digits, p_digits = p_digits,
+      followup_factors = iv,
+      compute_followups = local({
+        followup_data <- data; followup_formula <- formula
+        engine <- NULL
+        function(effects, forced, main_effects) {
+          if (is.null(engine)) engine <<- .t_permuco_followups(followup_data,
+            followup_formula, id, iv, within, covariate, np, seed)
+          engine(effects, forced, main_effects)
+        }
+      }),
       runtime_info = list(R = R.version.string,
                           permuco = as.character(utils::packageVersion("permuco")))
     )

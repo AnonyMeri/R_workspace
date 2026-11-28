@@ -1,6 +1,6 @@
 # R_workspaceから source("script/install_packages.R") で実行。
 # 使用する方式の依存パッケージだけ導入する場合は、この一覧から選ぶ。
-packages <- c("afex", "emmeans", "car", "ARTool", "permuco", "PMCMRplus",
+packages <- c("afex", "emmeans", "sandwich", "car", "ARTool", "permuco", "PMCMRplus",
   "lawstat", "rankFD", "npANCOVA", "nortest", "lavaan")
 missing <- packages[!vapply(packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing)) install.packages(missing, repos = "https://cloud.r-project.org")

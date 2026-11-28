@@ -33,11 +33,11 @@
 | `rank` | 1要因、対応あり／なし、2水準以上 | 下表で自動選択 | Dunnまたは対応ありWilcoxon | 使用しない |
 | `welch` | 対応なし・1要因・2群以上 | 2群：Welchのt、3群以上：Welchの一元配置ANOVA | 3群以上：Games–Howell | 使用しない |
 | `art` | 被験者間・被験者内・混合の要因計画 | ART後のANOVA | ART-Cを用いた比較 | 使用しない |
-| `permuco` | 被験者間・被験者内・混合の要因計画 | 置換ANOVA | 実装しない | 使用しない |
+| `permuco` | 被験者間・被験者内・混合の要因計画 | 置換ANOVA | HC2による置換対比検定 | 使用しない |
 | `brunner_munzel` | 対応なし・1要因・2群 | Brunner–Munzel、t近似、両側 | なし | 使用しない |
 | `ats` | 対応なし・1要因・3群以上 | ATS、F近似 | 全ペアMCTP、Fisher近似 | 使用しない |
 | `ancova` | 共変量のある要因計画 | 通常ANCOVA | 共変量の中心値でのemmeans比較 | 使用する |
-| `permuco_ancova` | 共変量のある要因計画 | 置換ANCOVA | 実装しない | 使用する |
+| `permuco_ancova` | 共変量のある要因計画 | 置換ANCOVA | 中心値でのHC2による置換対比検定 | 使用する |
 | `rank_ancova` | 対応なし・1要因・2群以上 | Quadeの順位ANCOVA | 3群以上：各2群で再推定したQuade法 | 使用する |
 
 `nonparam_anova` は `c("art", "permuco")` の別名です。通常ANOVA/ANCOVAの検定タイプは既定III、選択可能なのはII/IIIです。反復測定ARTは `Error()` を使うためType I、対応なしARTはType IIIです。同じ効果名でも、検定タイプ・順位変換・モデルが異なるので、F値やp値の一致を前提にしません。
@@ -116,7 +116,7 @@ result <- analyze(experiment, method = c("anova", "art"),
 | Welch・3群以上 | PMCMRplus／Games–Howell | 全ペアを考慮した固有の調整。追加補正しない |
 | ATS後のMCTP | rankFD | 全ペアTukey型対比、Fisher近似の固有の調整。追加補正しない |
 | t・2群Welch・Brunner–Munzel | 各検定 | 1比較なので追加補正なし |
-| permuco／置換ANCOVA | — | この実装に下位検定はない |
+| permuco／置換ANCOVA | helper→`stats::p.adjust()` | 主効果の全ペア、単純比較は方向・固定水準ごと |
 
 **同じ `adjust` 名でも、ANOVAとARTでfamilyは完全には同じではありません。** 比較群の定義は維持しています。計算範囲と表示範囲の指定では、各効果内のfamilyを変更しません。familyは結果の `family` / `family_size` に保存します。異なる方法・従属変数・効果をまたぐ実験全体の多重性を一括で制御する設定ではありません。
 
@@ -266,7 +266,7 @@ saveRDS(result, "results/analysis_result.rds")
 | t、2群Welch | R標準のstats |
 | ANOVA/ANCOVA | afex、emmeans、car |
 | ART/ART-C | ARTool、emmeans、car |
-| permuco | permuco |
+| permuco | permuco、下位検定にはemmeans・sandwich |
 | 一般ランクのDunn下位検定 | PMCMRplus |
 | Welchの3群以上 | stats、下位検定にPMCMRplus |
 | Brunner–Munzel | lawstat |
@@ -338,7 +338,17 @@ DVごとに、該当する段階だけを表示します。球面性→診断／
 
 6. Frossard, J., & Renaud, O. (2021). *Permutation Tests for Regression, ANOVA, and Comparison of Signals: The permuco Package.* Journal of Statistical Software, 99(15), 1–32. [DOI: 10.18637/jss.v099.i15](https://doi.org/10.18637/jss.v099.i15)。モデル・共変量・反復測定に応じた置換法とR実装の一次資料です。
 
-計算は `permuco::aovperm()` に委譲します。実装するのは全体の要因・共変量の検定で、独自の置換下位検定は追加していません。[公式aovpermリファレンス](https://search.r-project.org/CRAN/refmans/permuco/html/aovperm.html)にある各置換法の条件に従います。
+全体検定は `permuco::aovperm()` に委譲します。[公式aovpermリファレンス](https://search.r-project.org/CRAN/refmans/permuco/html/aovperm.html)にある各置換法の条件に従います。
+
+下位検定は独自拡張です。`permuco_followups.R` が全体検定と同じ固定効果モデルを `lm()` で表現し、`emmeans` の等重みの主効果・2要因の単純比較を線形対比として定義します。ANCOVAは全体モデルで中心化した共変量を0に固定し、交互作用の指定を維持します。3要因以上の交互作用や共変量自体の水準間比較は展開しません。
+
+すべての下位比較の共分散は `sandwich::vcovCL(type="HC2", cadjust=TRUE, cluster=ID)` で計算します。通常ANOVA/ANCOVAの標準誤差と一致することを要件にはしません。帰無仮説の対比だけを0に制約し、帰無モデルの適合値に変換した残差を加えるFreedman–Lane型の近似検定です。被験者間方向は全条件が揃う参加者の残差ベクトルを丸ごと置換し、被験者内方向は参加者ごとの残差ベクトル全体に同じ符号を掛けます。後者には帰無下の独立な参加者ベクトルの符号対称性が必要です。HC2はこの対称性や交換可能性を保証しません。全体検定の `permutation_method` は下位検定の方式を変更しません。
+
+各変換後にも同じモデルの残差からHC2標準誤差を再計算し、両側の絶対t統計量を比較します。`np` は元データを含む総数で、ランダム変換は `np-1` 回、p値は `(1 + 極端な変換の数) / np` です。小標本の符号反転では異なる変換数が少なく、反復を増やしても正確な検定の分解能は増えません。通常は5000回以上を指定します。seed、方式、HC2、familyを結果に保持します。
+
+対応する信頼区間・効果量・パラメトリック自由度は計算しません。補正はp.adjust対応のもののみで、TukeyとSidakは選択不可です。Holm/Bonferroniはfamily内の制御であり、効果の選択や従属変数をまたぐ実験全体の保証ではありません。推定不能、HC2の特異な補正、非正の置換後標準誤差は算出不可とし、別方式へ自動変更しません。参加者ごとに同じ被験者内条件が必要です。
+
+理論上の根拠は、[Winkler et al. (2014)](https://doi.org/10.1016/j.neuroimage.2014.01.060) の対比とnuisance調整、[sandwichの公式資料](https://sandwich.r-forge.r-project.org/reference/vcovCL.html) の参加者単位HC2、[Phipson & Smyth (2010)](https://doi.org/10.2202/1544-6115.1585) のランダム変換p値です。これらがラッパーの全設計・全条件を直接保証するわけではありません。残差を使用するため有限標本で一般に厳密な検定とは呼びません。
 
 ### Brunner–Munzel
 
@@ -370,6 +380,6 @@ DVごとに、該当する段階だけを表示します。球面性→診断／
 
 ## 8. 検証状況と制約
 
-現在のリポジトリには自動テスト一式は含まれていません。
+HC2置換下位検定の統合テストは、リポジトリのルートで `source("script/test/test_permuco_followups.R", encoding="UTF-8")` を実行できます。被験者間・被験者内・混合計画、共変量交互作用の有無、複数共変量、補正、seed再現性、下位検定の無効化を確認します。全条件の検定サイズを保証するテストではありません。
 
 下位検定の計算・表示範囲、補正、欠損処理は上記の実装仕様です。方法間で欠損処理や多重比較familyが異なる点、ARTへのGG/HF適用と被験者内ART-Cの再推定に独自処理を含む点に留意してください。独自拡張を含む全条件での検定サイズ・検出力を検証したという意味ではありません。

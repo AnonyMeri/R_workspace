@@ -15,6 +15,8 @@
 | `test_data/` | [模擬CSVの一覧、列の意味、使用例](test_data/README.md) |
 | `LICENSE` | [GNU General Public License v3.0の本文](LICENSE) |
 
+置換ANOVA・ANCOVAの下位検定は、推定周辺平均の比較に参加者単位HC2と置換を用います。実行条件と多重比較補正の範囲は[検定の説明](script/test/README.md)を参照してください。
+
 現在のリポジトリには`examples/`・`tests/`は含まれていません。実行例は各フォルダのREADMEに記載しています。`script/test/`は統計検定の実装を置くフォルダです。
 
 ## 始め方

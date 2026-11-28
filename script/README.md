@@ -59,7 +59,7 @@ source("script/load_script.R", encoding = "UTF-8")       # 読み込み・再読
 | Anderson–Darling・Lilliefors | `nortest` | 追加の正規性検定を選ぶ場合 |
 | ANOVA・ANCOVA | `afex`、`emmeans`、`car` | 球面性関連にも`car`を使用 |
 | ART・ART-C | `ARTool`、`emmeans`、`car` | `car`は被験者内の球面性評価で使用 |
-| 置換ANOVA・ANCOVA | `permuco` | 下位検定は実装していない |
+| 置換ANOVA・ANCOVA | `permuco`, `emmeans`, `sandwich` | 全体検定はpermuco、下位検定は参加者単位HC2の置換対比 |
 | Dunn、Games–Howellの下位検定 | `PMCMRplus` | 一般ランク・Welchの3群以上の下位検定 |
 | Brunner–Munzel | `lawstat` | t近似 |
 | ATS＋MCTP | `rankFD` | 全体検定と多重比較 |
